@@ -836,7 +836,8 @@
 
             qrHistory.unshift(historyItem);
             if (qrHistory.length > 5) qrHistory.pop();
-
+            
+            saveHistory();
             updateHistoryDisplay();
         }
 
@@ -857,6 +858,17 @@
                     <div class="history-type">${item.type}</div>
                 </div>
             `).join('');
+        }
+        
+        function saveHistory() {
+            localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
+        }
+
+        function loadHistory() {
+            const savedHistory = localStorage.getItem('qrHistory');
+            if (savedHistory) {
+                qrHistory = JSON.parse(savedHistory);
+            }
         }
 
         function downloadPNG() {
@@ -885,7 +897,9 @@
             let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}" viewBox="0 0 ${canvas.width} ${canvas.height}">`;
             svg += `<rect width="100%" height="100%" fill="${document.getElementById('bg-color').value}"/>`;
             
-            const moduleSize = Math.floor(currentSize / Math.sqrt(imageData.data.length / 4));
+            const moduleCount = Math.sqrt(imageData.data.length / 4) / (canvas.width / Math.sqrt(imageData.data.length / 4));
+            const moduleSize = canvas.width / moduleCount;
+
             
             for (let y = 0; y < canvas.height; y += moduleSize) {
                 for (let x = 0; x < canvas.width; x += moduleSize) {
@@ -925,6 +939,11 @@
                 alert('Error al copiar la imagen: ' + error.message);
             }
         }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+            updateHistoryDisplay();
+        });
 
         // Generar QR automáticamente cuando se cambie el contenido
         document.addEventListener('input', function(e) {
@@ -951,4 +970,4 @@
         });
     </script>
 </body>
-</html
+</html>
