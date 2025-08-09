@@ -737,12 +737,6 @@
                 </div>
             </div>
 
-            <div class="history">
-                <h3>📜 Historial reciente</h3>
-                <div id="history-list">
-                    <p style="text-align: center; color: var(--text-color-secondary); font-style: italic;">No hay códigos QR generados aún</p>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -751,7 +745,6 @@
         // Global variables
         let qrCode = null; // To store the QRCodeStyling instance
         let currentSize = 256;
-        let qrHistory = [];
         let logoUrl = null;
 
         /**
@@ -759,8 +752,6 @@
          */
         function initialize() {
             loadAndApplyTheme();
-            loadHistory();
-            updateHistoryDisplay();
             setupEventListeners();
             // Set initial color values in text spans
             document.getElementById('fg-color-1').dispatchEvent(new Event('input'));
@@ -1025,47 +1016,6 @@ END:VCARD`, type: 'Contacto' };
             }
             
             document.getElementById('result').classList.add('show');
-            addToHistory(qrText, qrType);
-        }
-
-        function addToHistory(content, type) {
-            const historyItem = {
-                content: content.length > 50 ? content.substring(0, 50) + '...' : content,
-                type: type,
-                date: new Date().toLocaleString()
-            };
-            qrHistory.unshift(historyItem);
-            if (qrHistory.length > 5) qrHistory.pop();
-            saveHistory();
-            updateHistoryDisplay();
-        }
-
-        function updateHistoryDisplay() {
-            const list = document.getElementById('history-list');
-            if (qrHistory.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: var(--text-color-secondary); font-style: italic;">No hay códigos QR generados aún</p>';
-                return;
-            }
-            list.innerHTML = qrHistory.map(item => `
-                <div class="history-item">
-                    <div>
-                        <div class="history-content">${item.content}</div>
-                        <small style="color: var(--text-color-secondary);">${item.date}</small>
-                    </div>
-                    <div class="history-type">${item.type}</div>
-                </div>
-            `).join('');
-        }
-
-        function saveHistory() {
-            localStorage.setItem('qrHistory', JSON.stringify(qrHistory));
-        }
-
-        function loadHistory() {
-            const saved = localStorage.getItem('qrHistory');
-            if (saved) {
-                qrHistory = JSON.parse(saved);
-            }
         }
 
         function download(extension) {
