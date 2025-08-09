@@ -7,7 +7,7 @@
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6856556862133155"
      crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <style>
         /* 1. Design System: Variables */
         :root {
@@ -667,17 +667,52 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="fg-color">Color del código:</label>
-                        <div class="color-input">
-                            <input type="color" id="fg-color" class="color-picker" value="#000000">
-                            <span>#000000</span>
+                        <label>Color del código (Gradiente)</label>
+                        <div style="display: flex; gap: var(--space-3); align-items: center;">
+                            <div class="color-input">
+                                <input type="color" id="fg-color-1" class="color-picker" value="#000000">
+                                <span id="fg-color-1-text">#000000</span>
+                            </div>
+                            <div class="color-input">
+                                <input type="color" id="fg-color-2" class="color-picker" value="#3b82f6">
+                                <span id="fg-color-2-text">#3b82f6</span>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="bg-color">Color de fondo:</label>
+                        <label for="gradient-type">Tipo de Gradiente</label>
+                        <select id="gradient-type" class="form-control">
+                            <option value="linear" selected>Lineal</option>
+                            <option value="radial">Radial</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="bg-color">Color de fondo</label>
                         <div class="color-input">
                             <input type="color" id="bg-color" class="color-picker" value="#ffffff">
-                            <span>#ffffff</span>
+                            <span id="bg-color-text">#ffffff</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dot-style">Estilo de Puntos</label>
+                        <select id="dot-style" class="form-control">
+                            <option value="square" selected>Cuadrados</option>
+                            <option value="dots">Puntos</option>
+                            <option value="rounded">Redondeado</option>
+                            <option value="extra-rounded">Muy Redondeado</option>
+                            <option value="classy">Clásico</option>
+                            <option value="classy-rounded">Clásico Redondeado</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="logo-upload">Logotipo (opcional)</label>
+                        <input type="file" id="logo-upload" class="form-control" accept="image/png, image/jpeg, image/svg+xml">
+                        <div style="margin-top: var(--space-2); display:flex; align-items:center; gap: var(--space-3);">
+                            <img id="logo-preview" src="" alt="Vista previa del logo" style="max-width: 50px; max-height: 50px; display: none; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                            <button id="remove-logo-btn" style="display: none; background: #ef4444; color: white; border: none; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: pointer;">Eliminar</button>
                         </div>
                     </div>
                 </div>
@@ -714,10 +749,10 @@
     <div id="toast-container"></div>
     <script>
         // Global variables
-        let currentQR = null;
+        let qrCode = null; // To store the QRCodeStyling instance
         let currentSize = 256;
         let qrHistory = [];
-        let qrInstance = null; // To store the QR object instance for reuse
+        let logoUrl = null;
 
         /**
          * Initializes the application by loading history and setting up event listeners.
@@ -728,7 +763,8 @@
             updateHistoryDisplay();
             setupEventListeners();
             // Set initial color values in text spans
-            document.getElementById('fg-color').dispatchEvent(new Event('input'));
+            document.getElementById('fg-color-1').dispatchEvent(new Event('input'));
+            document.getElementById('fg-color-2').dispatchEvent(new Event('input'));
             document.getElementById('bg-color').dispatchEvent(new Event('input'));
         }
 
@@ -745,17 +781,49 @@
             });
 
             document.getElementById('generate-btn').addEventListener('click', generateQR);
-            document.getElementById('download-png-btn').addEventListener('click', downloadPNG);
-            document.getElementById('download-svg-btn').addEventListener('click', downloadSVG);
+            document.getElementById('download-png-btn').addEventListener('click', () => download('png'));
+            document.getElementById('download-svg-btn').addEventListener('click', () => download('svg'));
             document.getElementById('copy-btn').addEventListener('click', copyToClipboard);
             
             document.addEventListener('input', handleFormInput);
 
-            document.getElementById('fg-color').addEventListener('input', handleColorChange);
+            // New/updated listeners
+            document.getElementById('fg-color-1').addEventListener('input', handleColorChange);
+            document.getElementById('fg-color-2').addEventListener('input', handleColorChange);
             document.getElementById('bg-color').addEventListener('input', handleColorChange);
+            document.getElementById('logo-upload').addEventListener('change', handleLogoUpload);
+            document.getElementById('remove-logo-btn').addEventListener('click', removeLogo);
             
             document.getElementById('theme-toggle').addEventListener('change', handleThemeToggle);
         }
+        
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                logoUrl = e.target.result;
+                const preview = document.getElementById('logo-preview');
+                preview.src = logoUrl;
+                preview.style.display = 'block';
+                document.getElementById('remove-logo-btn').style.display = 'inline-block';
+                generateQR(); // Regenerate QR with logo
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeLogo() {
+            logoUrl = null;
+            const uploader = document.getElementById('logo-upload');
+            uploader.value = ''; // Reset file input
+            const preview = document.getElementById('logo-preview');
+            preview.src = '';
+            preview.style.display = 'none';
+            document.getElementById('remove-logo-btn').style.display = 'none';
+            generateQR(); // Regenerate QR without logo
+        }
+
 
         /**
          * Applies the saved theme from localStorage or system preference.
@@ -798,6 +866,9 @@
             currentSize = parseInt(event.currentTarget.dataset.size, 10);
             document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('active'));
             event.currentTarget.classList.add('active');
+            if (qrCode) { // If QR already exists, update its size
+                generateQR();
+            }
         }
 
         /**
@@ -805,7 +876,12 @@
          * @param {Event} event The input event from the color picker.
          */
         function handleColorChange(event) {
-            event.currentTarget.nextElementSibling.textContent = event.currentTarget.value;
+            const colorPicker = event.currentTarget;
+            const textElementId = colorPicker.id + '-text'; // e.g., 'fg-color-1-text'
+            const textElement = document.getElementById(textElementId);
+            if (textElement) {
+                textElement.textContent = colorPicker.value;
+            }
         }
 
         /**
@@ -813,8 +889,9 @@
          * @param {Event} event The input event from a form control.
          */
         function handleFormInput(event) {
-            if (event.target.classList.contains('form-control')) {
-                validateInput(event.target);
+            const target = event.target;
+            if (target.classList.contains('form-control') && target.id !== 'logo-upload') {
+                validateInput(target);
 
                 clearTimeout(window.autoGenerateTimeout);
                 window.autoGenerateTimeout = setTimeout(() => {
@@ -840,11 +917,9 @@
             if (!element.value.trim()) return; // Don't validate empty fields
 
             let isValid = true;
-            // Only validate fields that need it
             if (element.type === 'url' || element.type === 'email') {
                  switch (element.type) {
                     case 'url':
-                        // Simple regex for URL, as new URL() can be too strict for user input
                         isValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(element.value);
                         break;
                     case 'email':
@@ -907,51 +982,50 @@ END:VCARD`, type: 'Contacto' };
             qrType = data.type;
 
             if (!qrText.trim()) {
-                showToast('Por favor, ingresa el contenido para el código QR.', 'error');
+                // Do not show toast here, as it can be annoying during auto-generation
                 return;
             }
 
-            const errorLevel = document.getElementById('error-level').value;
-            const fgColor = document.getElementById('fg-color').value;
-            const bgColor = document.getElementById('bg-color').value;
-
-            try {
-                qrInstance = qrcode(0, errorLevel);
-                qrInstance.addData(qrText);
-                qrInstance.make();
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const moduleCount = qrInstance.getModuleCount();
-                const moduleSize = Math.max(1, Math.floor(currentSize / moduleCount));
-                const actualSize = moduleSize * moduleCount;
-                
-                canvas.width = actualSize;
-                canvas.height = actualSize;
-
-                ctx.fillStyle = bgColor;
-                ctx.fillRect(0, 0, actualSize, actualSize);
-
-                ctx.fillStyle = fgColor;
-                for (let row = 0; row < moduleCount; row++) {
-                    for (let col = 0; col < moduleCount; col++) {
-                        if (qrInstance.isDark(row, col)) {
-                            ctx.fillRect(col * moduleSize, row * moduleSize, moduleSize, moduleSize);
-                        }
+            // Get all customization options
+            const options = {
+                width: currentSize,
+                height: currentSize,
+                data: qrText,
+                image: logoUrl,
+                dotsOptions: {
+                    type: document.getElementById('dot-style').value,
+                    gradient: {
+                        type: document.getElementById('gradient-type').value,
+                        colorStops: [
+                            { offset: 0, color: document.getElementById('fg-color-1').value },
+                            { offset: 1, color: document.getElementById('fg-color-2').value }
+                        ]
                     }
+                },
+                backgroundOptions: {
+                    color: document.getElementById('bg-color').value,
+                },
+                imageOptions: {
+                    crossOrigin: "anonymous",
+                    margin: 10,
+                    imageSize: 0.4,
+                },
+                qrOptions: {
+                    errorCorrectionLevel: document.getElementById('error-level').value
                 }
-                
-                currentQR = canvas;
+            };
+
+            if (!qrCode) {
+                qrCode = new QRCodeStyling(options);
                 const container = document.getElementById('qr-container');
                 container.innerHTML = '';
-                container.appendChild(canvas);
-                document.getElementById('result').classList.add('show');
-                
-                addToHistory(qrText, qrType);
-
-            } catch (error) {
-                showToast('Error al generar el código QR: ' + error.message, 'error');
+                qrCode.append(container);
+            } else {
+                qrCode.update(options);
             }
+            
+            document.getElementById('result').classList.add('show');
+            addToHistory(qrText, qrType);
         }
 
         function addToHistory(content, type) {
@@ -994,61 +1068,30 @@ END:VCARD`, type: 'Contacto' };
             }
         }
 
-        function downloadPNG() {
-            if (!currentQR) {
+        function download(extension) {
+            if (!qrCode) {
                 showToast('Primero genera un código QR', 'error');
                 return;
             }
-            const link = document.createElement('a');
-            link.download = `qr-code-${Date.now()}.png`;
-            link.href = currentQR.toDataURL('image/png');
-            link.click();
-        }
-
-        function downloadSVG() {
-            if (!qrInstance) {
-                showToast('Primero genera un código QR', 'error');
-                return;
-            }
-            const moduleCount = qrInstance.getModuleCount();
-            const fgColor = document.getElementById('fg-color').value;
-            const bgColor = document.getElementById('bg-color').value;
-            const size = currentSize;
-            const moduleSize = size / moduleCount;
-
-            let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
-            svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
-            
-            for (let row = 0; row < moduleCount; row++) {
-                for (let col = 0; col < moduleCount; col++) {
-                    if (qrInstance.isDark(row, col)) {
-                        svg += `<rect x="${col * moduleSize}" y="${row * moduleSize}" width="${moduleSize}" height="${moduleSize}" fill="${fgColor}"/>`;
-                    }
-                }
-            }
-            
-            svg += '</svg>';
-
-            const blob = new Blob([svg], { type: 'image/svg+xml' });
-            const link = document.createElement('a');
-            link.download = `qr-code-${Date.now()}.svg`;
-            link.href = URL.createObjectURL(blob);
-            link.click();
+            qrCode.download({ name: `qrazinnova-${Date.now()}`, extension: extension });
         }
 
         async function copyToClipboard() {
-            if (!currentQR) {
+            if (!qrCode) {
                 showToast('Primero genera un código QR', 'error');
                 return;
             }
             try {
-                currentQR.toBlob(async (blob) => {
-                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                    showToast('Imagen copiada al portapapeles', 'success');
-                });
+                const blob = await qrCode.getRawData('png');
+                if (!blob) {
+                    showToast('No se pudo generar la imagen para copiar.', 'error');
+                    return;
+                }
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                showToast('Imagen copiada al portapapeles', 'success');
             } catch (error) {
                 console.error('Error al copiar la imagen:', error);
-                showToast('Error al copiar la imagen: ' + error.message, 'error');
+                showToast('Error al copiar la imagen. Es posible que tu navegador no lo soporte.', 'error');
             }
         }
 
